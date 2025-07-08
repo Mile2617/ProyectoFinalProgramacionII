@@ -1,3 +1,4 @@
+// src/main/java/com/example/application/services/DataService.java
 package com.example.application.services;
 
 import com.example.application.threads.SensorRead;
@@ -13,15 +14,12 @@ public class DataService {
         sensor = new SensorRead();
         sensor.start();
     }
-    public Flux<Double> getStockPrice() {
-
-        return Flux
-                .<Double>generate(
-                        sink -> {
-                            sink.next(sensor.getTemp1());
-                        }
-                )
+    public Flux<Double> getTemp1Stream() {
+        return Flux.<Double>generate(sink -> sink.next(sensor.getTemp1()))
                 .delayElements(Duration.ofMillis(1000));
-        //.take(30);
+    }
+    public Flux<Integer> getHumo1Stream() {
+        return Flux.<Integer>generate(sink -> sink.next(sensor.getHumo1()))
+                .delayElements(Duration.ofMillis(1000));
     }
 }

@@ -1,3 +1,4 @@
+// src/main/java/com/example/application/views/indicadores/IndicadoresView.java
 package com.example.application.views.indicadores;
 
 import com.example.application.services.DataService;
@@ -6,127 +7,108 @@ import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.Composite;
 import com.vaadin.flow.component.DetachEvent;
 import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.theme.lumo.LumoUtility.Gap;
 import org.vaadin.lineawesome.LineAwesomeIconUrl;
 import reactor.core.Disposable;
-
-import java.util.Random;
 
 @PageTitle("indicadores")
 @Route("")
 @Menu(order = 0, icon = LineAwesomeIconUrl.PENCIL_RULER_SOLID)
 public class IndicadoresView extends Composite<VerticalLayout> {
 
-    private DataService service;
-    private Disposable subscription;
-    LineChart lineChart;
-    Data xValues = new Data(), yValues = new Data();
-    int x=0;
-    SOChart soChart;
-    private final DataChannel dataChannel;
+    private final DataService service;
+    private Disposable tempSubscription, humoSubscription;
+    private int x = 0, x2 = 0;
+
+    // Temp1 chart
+    private final Data tempX = new Data(), tempY = new Data();
+    private final SOChart tempChart = new SOChart();
+    private final Span tempValueBox = new Span();
+
+    // Humo1 chart
+    private final Data humoX = new Data(), humoY = new Data();
+    private final SOChart humoChart = new SOChart();
+    private final Span humoValueBox = new Span();
 
     public IndicadoresView(DataService service) {
-        this.service= service;
-        HorizontalLayout layoutRow = new HorizontalLayout();
+        this.service = service;
         getContent().setWidth("100%");
         getContent().getStyle().set("flex-grow", "1");
-        layoutRow.setWidthFull();
-        getContent().setFlexGrow(1.0, layoutRow);
-        layoutRow.addClassName(Gap.MEDIUM);
-        layoutRow.setWidth("100%");
-        layoutRow.getStyle().set("flex-grow", "1");
 
+        // Temp1 chart setup
+        tempX.setName("Time");
+        tempY.setName("Temp1");
+        LineChart tempLine = new LineChart(tempX, tempY);
+        tempLine.setName("Temp1");
+        tempLine.plotOn(new RectangularCoordinate(new XAxis(tempX), new YAxis(tempY)));
+        tempLine.setSmoothness(true);
+        tempChart.setSize("400px", "300px");
+        tempChart.add(tempLine, new Title("Temp1 Chart"));
 
-        soChart = new SOChart();
-        soChart.setSize("800px", "500px");
+        // Humo1 chart setup
+        humoX.setName("Time");
+        humoY.setName("Humo1");
+        LineChart humoLine = new LineChart(humoX, humoY);
+        humoLine.setName("Humo1");
+        humoLine.plotOn(new RectangularCoordinate(new XAxis(humoX), new YAxis(humoY)));
+        humoLine.setSmoothness(true);
+        humoChart.setSize("400px", "300px");
+        humoChart.add(humoLine, new Title("Humo1 Chart"));
 
-        // Generating some random values for a LineChart
-        Random random = new Random();
+        // Value boxes styling
+        tempValueBox.getStyle().set("border", "1px solid #ccc").set("padding", "16px").set("border-radius", "8px").set("font-size", "1.5em");
+        humoValueBox.getStyle().set("border", "1px solid #ccc").set("padding", "16px").set("border-radius", "8px").set("font-size", "1.5em");
 
+        // Layouts
+        HorizontalLayout tempLayout = new HorizontalLayout(tempChart, tempValueBox);
+        tempLayout.setAlignItems(HorizontalLayout.Alignment.CENTER);
+        tempLayout.setWidthFull();
+        tempLayout.setSpacing(true);
 
+        HorizontalLayout humoLayout = new HorizontalLayout(humoChart, humoValueBox);
+        humoLayout.setAlignItems(HorizontalLayout.Alignment.CENTER);
+        humoLayout.setWidthFull();
+        humoLayout.setSpacing(true);
 
-        xValues.setName("X Values");
-        yValues.setName("Random Values");
-
-        // Line chart is initialized with the generated XY values
-        lineChart = new LineChart(xValues, yValues);
-        lineChart.setName("40 Random Values");
-        System.out.println("prueba 1234");
-        // Line chart needs a coordinate system to plot on
-        // We need Number-type for both X and Y axes in this case
-        XAxis xAxis = new XAxis(xValues);
-        xAxis.setMinAsMinData();
-        xAxis.setMaxAsMaxData();
-        YAxis yAxis = new YAxis(yValues);
-        yAxis.setMin(0);
-        yAxis.setMax(100);
-
-        //XAxis xAxis = new XAxis(DataType.NUMBER);
-        //YAxis yAxis = new YAxis(DataType.NUMBER);
-        RectangularCoordinate rc = new RectangularCoordinate(xAxis, yAxis);
-        lineChart.plotOn(rc);
-        lineChart.setSmoothness(true);
-
-        // Add to the chart display area with a simple title
-        soChart.add(lineChart, new Title("Sample Line Chart"));
-        // Set the component for the view
-
-
-        dataChannel = new DataChannel(soChart, xValues, yValues);
-        layoutRow.add(soChart);
-
-
-
-
-
-
-        getContent().add(layoutRow);
+        getContent().add(tempLayout, humoLayout);
     }
-
 
     @Override
     protected void onAttach(AttachEvent attachEvent) {
         super.onAttach(attachEvent);
-
         UI ui = attachEvent.getUI();
         ui.setPollInterval(1000);
 
-        // Hook up to service for live updates
-        subscription =
-                service
-                        .getStockPrice()
-                        .subscribe(
-                                price -> {
-                                    ui.access(
-                                            () -> {
+        // Temp1 subscription
+        tempSubscription = service.getTemp1Stream().subscribe(temp -> {
+            ui.access(() -> {
+                x++;
+                tempX.add(x);
+                tempY.add(temp);
+                tempValueBox.setText("Current Temp1: " + temp);
+            });
+        });
 
-
-                                                try {
-                                                    x++;
-                                                    dataChannel.append(x,price);
-
-                                                    //System.out.println(x+" : "+price);
-                                                } catch (Exception e) {
-                                                    throw new RuntimeException(e);
-                                                }
-
-                                            }
-                                    );
-                                }
-                        );
+        // Humo1 subscription
+        humoSubscription = service.getHumo1Stream().subscribe(humo -> {
+            ui.access(() -> {
+                x2++;
+                humoX.add(x2);
+                humoY.add(humo);
+                humoValueBox.setText("Current Humo1: " + humo);
+            });
+        });
     }
 
     @Override
     protected void onDetach(DetachEvent detachEvent) {
-        // Cancel subscription when the view is detached
-        subscription.dispose();
-
+        if (tempSubscription != null) tempSubscription.dispose();
+        if (humoSubscription != null) humoSubscription.dispose();
         super.onDetach(detachEvent);
     }
-
 }
