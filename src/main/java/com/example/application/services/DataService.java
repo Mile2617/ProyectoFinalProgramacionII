@@ -18,7 +18,7 @@ public class DataService {
         return Flux
                 .<Double>generate(
                         sink -> {
-                            sink.next(sensor.getValue());
+                            sink.next(sensor.getTemp1());
                         }
                 )
                 .delayElements(Duration.ofMillis(1000));
