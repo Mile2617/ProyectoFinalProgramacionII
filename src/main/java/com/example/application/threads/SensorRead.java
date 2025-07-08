@@ -12,10 +12,13 @@ public class SensorRead extends Thread {
 
     private final String connectionString = "Endpoint=sb://ihsuproduaenorthres005dednamespace.servicebus.windows.net/;SharedAccessKeyName=iothubowner;SharedAccessKey=TvpwGAeq0unl6CN5utp7t7rMjyPdOPDN3AIoTNIWXvY=;EntityPath=iothub-ehub-ehablothub-55382497-01de6bb357";
     private final String eventHubName = "iothub-ehub-ehablothub-55382497-01de6bb357";
-    private final String consumerGroup = "java-monitor"; // 👈 usa uno nuevo
+    private final String consumerGroup = "java-monitor";
 
     private final AtomicReference<Double> temp1 = new AtomicReference<>(0.0);
+    private final AtomicReference<Double> temp2 = new AtomicReference<>(0.0);
     private final AtomicReference<Integer> humo1 = new AtomicReference<>(0);
+    private final AtomicReference<Integer> humo2 = new AtomicReference<>(0);
+    private final AtomicReference<Boolean> fuego = new AtomicReference<>(false);
 
     @Override
     public void run() {
@@ -37,15 +40,29 @@ public class SensorRead extends Thread {
                             JsonNode body = mapper.readTree(json);
 
                             if (body.has("Temp1") && !body.get("Temp1").isNull()) {
-                                double t = body.get("Temp1").asDouble();
-                                temp1.set(t);
-                                System.out.println("🌡 Temp1: " + t);
+                                double t1 = body.get("Temp1").asDouble();
+                                temp1.set(t1);
+                                System.out.println("🌡 Temp1: " + t1);
                             }
-
+                            if (body.has("Temp2") && !body.get("Temp2").isNull()) {
+                                double t2 = body.get("Temp2").asDouble();
+                                temp2.set(t2);
+                                System.out.println("🌡 Temp2: " + t2);
+                            }
                             if (body.has("Humo1") && !body.get("Humo1").isNull()) {
-                                int h = body.get("Humo1").asInt();
-                                humo1.set(h);
-                                System.out.println("💨 Humo1: " + h);
+                                int h1 = body.get("Humo1").asInt();
+                                humo1.set(h1);
+                                System.out.println("💨 Humo1: " + h1);
+                            }
+                            if (body.has("Humo2") && !body.get("Humo2").isNull()) {
+                                int h2 = body.get("Humo2").asInt();
+                                humo2.set(h2);
+                                System.out.println("💨 Humo2: " + h2);
+                            }
+                            if (body.has("Fuego") && !body.get("Fuego").isNull()) {
+                                boolean f = body.get("Fuego").asBoolean();
+                                fuego.set(f);
+                                System.out.println("🔥 Fuego: " + f);
                             }
 
                         } catch (Exception e) {
@@ -63,7 +80,19 @@ public class SensorRead extends Thread {
         return temp1.get();
     }
 
+    public double getTemp2() {
+        return temp2.get();
+    }
+
     public int getHumo1() {
         return humo1.get();
+    }
+
+    public int getHumo2() {
+        return humo2.get();
+    }
+
+    public boolean isFuego() {
+        return fuego.get();
     }
 }
