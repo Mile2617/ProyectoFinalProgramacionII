@@ -20,16 +20,6 @@
         <version>3.5.3</version>
     </parent>
 
-    <repositories>
-        <repository>
-            <id>Vaadin Directory</id>
-            <url>https://maven.vaadin.com/vaadin-addons</url>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </repository>
-    </repositories>
-
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -63,14 +53,9 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.vaadin.addons.so</groupId>
-            <artifactId>so-charts</artifactId>
-            <version>5.0.3</version>
-        </dependency>
-        <dependency>
-            <groupId>org.vaadin.addons.so</groupId>
-            <artifactId>so-helper</artifactId>
-            <version>5.0.1</version>
+            <groupId>com.storedobject.chart</groupId>
+            <artifactId>sochart</artifactId>
+            <version>3.2.0</version>
         </dependency>
 
         <!-- SPRING BOOT -->

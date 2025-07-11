@@ -128,6 +128,44 @@ public class IndicadoresView extends Composite<VerticalLayout> {
         getContent().add(temp1Layout, temp2Layout, humo1Layout, humo2Layout, fuegoLayout);
     }
 
+    // Append methods for real-time plotting (with exception handling)
+    private void appendTemp1(int x, double y) {
+        temp1X.add(x);
+        temp1Y.add(y);
+        try {
+            temp1Chart.update();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    private void appendTemp2(int x, double y) {
+        temp2X.add(x);
+        temp2Y.add(y);
+        try {
+            temp2Chart.update();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    private void appendHumo1(int x, int y) {
+        humo1X.add(x);
+        humo1Y.add(y);
+        try {
+            humo1Chart.update();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    private void appendHumo2(int x, int y) {
+        humo2X.add(x);
+        humo2Y.add(y);
+        try {
+            humo2Chart.update();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     @Override
     protected void onAttach(AttachEvent attachEvent) {
         super.onAttach(attachEvent);
@@ -137,8 +175,7 @@ public class IndicadoresView extends Composite<VerticalLayout> {
         temp1Subscription = service.getTemp1Stream().subscribe(temp -> {
             ui.access(() -> {
                 x1++;
-                temp1X.add(x1);
-                temp1Y.add(temp);
+                appendTemp1(x1, temp);
                 temp1ValueBox.setText("Current Temp1: " + temp);
             });
         });
@@ -146,8 +183,7 @@ public class IndicadoresView extends Composite<VerticalLayout> {
         temp2Subscription = service.getTemp2Stream().subscribe(temp -> {
             ui.access(() -> {
                 x2++;
-                temp2X.add(x2);
-                temp2Y.add(temp);
+                appendTemp2(x2, temp);
                 temp2ValueBox.setText("Current Temp2: " + temp);
             });
         });
@@ -155,8 +191,7 @@ public class IndicadoresView extends Composite<VerticalLayout> {
         humo1Subscription = service.getHumo1Stream().subscribe(humo -> {
             ui.access(() -> {
                 x3++;
-                humo1X.add(x3);
-                humo1Y.add(humo);
+                appendHumo1(x3, humo);
                 humo1ValueBox.setText("Current Humo1: " + humo);
             });
         });
@@ -164,8 +199,7 @@ public class IndicadoresView extends Composite<VerticalLayout> {
         humo2Subscription = service.getHumo2Stream().subscribe(humo -> {
             ui.access(() -> {
                 x4++;
-                humo2X.add(x4);
-                humo2Y.add(humo);
+                appendHumo2(x4, humo);
                 humo2ValueBox.setText("Current Humo2: " + humo);
             });
         });

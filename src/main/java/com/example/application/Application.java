@@ -1,5 +1,6 @@
 package com.example.application;
 
+    import com.example.application.threads.SensorRead;
     import com.vaadin.flow.component.page.AppShellConfigurator;
     import com.vaadin.flow.router.PageTitle;
     import com.vaadin.flow.theme.Theme;
