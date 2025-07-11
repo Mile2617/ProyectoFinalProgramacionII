@@ -303,9 +303,10 @@ public class IndicadoresView extends Composite<VerticalLayout> {
     // HTTP calls
     private void sendReleCommand(int value) {
         try {
+            String url = "/api/dashboard/rele?value=" + value;
             java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
             java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
-                    .uri(java.net.URI.create("/api/dashboard/rele?value=" + value))
+                    .uri(java.net.URI.create(url))
                     .POST(java.net.http.HttpRequest.BodyPublishers.noBody())
                     .build();
             client.sendAsync(request, java.net.http.HttpResponse.BodyHandlers.discarding());
@@ -316,9 +317,10 @@ public class IndicadoresView extends Composite<VerticalLayout> {
 
     private void sendBuzzerCommand(int value) {
         try {
+            String url = "/api/dashboard/buzzer?value=" + value;
             java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
             java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
-                    .uri(java.net.URI.create("/api/dashboard/buzzer?value=" + value))
+                    .uri(java.net.URI.create(url))
                     .POST(java.net.http.HttpRequest.BodyPublishers.noBody())
                     .build();
             client.sendAsync(request, java.net.http.HttpResponse.BodyHandlers.discarding());
