@@ -1,223 +1,235 @@
 package com.example.application.views.indicadores;
 
 import com.example.application.services.DataService;
-import com.storedobject.chart.*;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.Composite;
 import com.vaadin.flow.component.DetachEvent;
 import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.html.Span;
-import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import org.vaadin.lineawesome.LineAwesomeIconUrl;
+import com.vaadin.flow.server.StreamResource;
+import org.knowm.xchart.BitmapEncoder;
+import org.knowm.xchart.XYChart;
+import org.knowm.xchart.XYChartBuilder;
+import org.knowm.xchart.style.Styler;
+import org.knowm.xchart.style.markers.SeriesMarkers;
 import reactor.core.Disposable;
 
-@PageTitle("indicadores")
-@Route("")
-@Menu(order = 0, icon = LineAwesomeIconUrl.PENCIL_RULER_SOLID)
+import java.io.ByteArrayInputStream;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Date;
+import java.util.LinkedList;
+
+@PageTitle("Indicadores")
+@Route("indicadores")
 public class IndicadoresView extends Composite<VerticalLayout> {
 
     private final DataService service;
-    private Disposable temp1Subscription, temp2Subscription, humo1Subscription, humo2Subscription, fuegoSubscription;
-    private int x1 = 0, x2 = 0, x3 = 0, x4 = 0;
+    private Disposable subscriptionTemp1;
+    private Disposable subscriptionTemp2;
+    private Disposable subscriptionHumo1;
+    private Disposable subscriptionHumo2;
+    private Disposable subscriptionFuego;
 
-    // Temp1 chart
-    private final Data temp1X = new Data(), temp1Y = new Data();
-    private final SOChart temp1Chart = new SOChart();
-    private final Span temp1ValueBox = new Span();
+    // Temperature chart data
+    private final XYChart tempChart;
+    private final Image tempChartImage;
+    private final LinkedList<LocalDateTime> tempTimestamps = new LinkedList<>();
+    private final LinkedList<Double> temp1Values = new LinkedList<>();
+    private final LinkedList<Double> temp2Values = new LinkedList<>();
 
-    // Temp2 chart
-    private final Data temp2X = new Data(), temp2Y = new Data();
-    private final SOChart temp2Chart = new SOChart();
-    private final Span temp2ValueBox = new Span();
+    // Smoke chart data
+    private final XYChart humoChart;
+    private final Image humoChartImage;
+    private final LinkedList<LocalDateTime> humoTimestamps = new LinkedList<>();
+    private final LinkedList<Integer> humo1Values = new LinkedList<>();
+    private final LinkedList<Integer> humo2Values = new LinkedList<>();
 
-    // Humo1 chart
-    private final Data humo1X = new Data(), humo1Y = new Data();
-    private final SOChart humo1Chart = new SOChart();
-    private final Span humo1ValueBox = new Span();
+    private final int MAX_POINTS = 20;
 
-    // Humo2 chart
-    private final Data humo2X = new Data(), humo2Y = new Data();
-    private final SOChart humo2Chart = new SOChart();
-    private final Span humo2ValueBox = new Span();
+    private final Span spanTemperatura;
+    private final Span spanHumo;
+    private final Span spanIncendio;
 
-    // Fuego value box
-    private final Span fuegoValueBox = new Span();
+    private double temp1 = 0.0;
+    private double temp2 = 0.0;
+    private int humo1 = 0;
+    private int humo2 = 0;
+    private boolean fuego = false;
 
     public IndicadoresView(DataService service) {
         this.service = service;
-        getContent().setWidth("100%");
-        getContent().getStyle().set("flex-grow", "1");
 
-        // Temp1 chart setup
-        temp1X.setName("Time");
-        temp1Y.setName("Temp1");
-        LineChart temp1Line = new LineChart(temp1X, temp1Y);
-        temp1Line.setName("Temp1");
-        temp1Line.plotOn(new RectangularCoordinate(new XAxis(temp1X), new YAxis(temp1Y)));
-        temp1Line.setSmoothness(true);
-        temp1Chart.setSize("400px", "300px");
-        temp1Chart.add(temp1Line, new Title("Temp1 Chart"));
+        // Temperature chart setup
+        tempChart = new XYChartBuilder()
+                .width(800)
+                .height(400)
+                .title("Temperaturas")
+                .xAxisTitle("Hora")
+                .yAxisTitle("Temperatura (C)")
+                .build();
+        tempChart.getStyler().setLegendPosition(Styler.LegendPosition.InsideNE);
+        tempChart.getStyler().setDatePattern("HH:mm:ss");
+        tempChart.getStyler().setXAxisLabelRotation(45);
 
-        // Temp2 chart setup
-        temp2X.setName("Time");
-        temp2Y.setName("Temp2");
-        LineChart temp2Line = new LineChart(temp2X, temp2Y);
-        temp2Line.setName("Temp2");
-        temp2Line.plotOn(new RectangularCoordinate(new XAxis(temp2X), new YAxis(temp2Y)));
-        temp2Line.setSmoothness(true);
-        temp2Chart.setSize("400px", "300px");
-        temp2Chart.add(temp2Line, new Title("Temp2 Chart"));
+        // Smoke chart setup
+        humoChart = new XYChartBuilder()
+                .width(800)
+                .height(400)
+                .title("Humo")
+                .xAxisTitle("Hora")
+                .yAxisTitle("Nivel de Humo")
+                .build();
+        humoChart.getStyler().setLegendPosition(Styler.LegendPosition.InsideNE);
+        humoChart.getStyler().setDatePattern("HH:mm:ss");
+        humoChart.getStyler().setXAxisLabelRotation(45);
 
-        // Humo1 chart setup
-        humo1X.setName("Time");
-        humo1Y.setName("Humo1");
-        LineChart humo1Line = new LineChart(humo1X, humo1Y);
-        humo1Line.setName("Humo1");
-        humo1Line.plotOn(new RectangularCoordinate(new XAxis(humo1X), new YAxis(humo1Y)));
-        humo1Line.setSmoothness(true);
-        humo1Chart.setSize("400px", "300px");
-        humo1Chart.add(humo1Line, new Title("Humo1 Chart"));
+        // Initialize with dummy data
+        LocalDateTime now = LocalDateTime.now();
+        tempTimestamps.add(now);
+        temp1Values.add(0.0);
+        temp2Values.add(0.0);
 
-        // Humo2 chart setup
-        humo2X.setName("Time");
-        humo2Y.setName("Humo2");
-        LineChart humo2Line = new LineChart(humo2X, humo2Y);
-        humo2Line.setName("Humo2");
-        humo2Line.plotOn(new RectangularCoordinate(new XAxis(humo2X), new YAxis(humo2Y)));
-        humo2Line.setSmoothness(true);
-        humo2Chart.setSize("400px", "300px");
-        humo2Chart.add(humo2Line, new Title("Humo2 Chart"));
+        humoTimestamps.add(now);
+        humo1Values.add(0);
+        humo2Values.add(0);
 
-        // Value boxes styling
-        temp1ValueBox.getStyle().set("border", "1px solid #ccc").set("padding", "16px").set("border-radius", "8px").set("font-size", "1.5em");
-        temp2ValueBox.getStyle().set("border", "1px solid #ccc").set("padding", "16px").set("border-radius", "8px").set("font-size", "1.5em");
-        humo1ValueBox.getStyle().set("border", "1px solid #ccc").set("padding", "16px").set("border-radius", "8px").set("font-size", "1.5em");
-        humo2ValueBox.getStyle().set("border", "1px solid #ccc").set("padding", "16px").set("border-radius", "8px").set("font-size", "1.5em");
-        fuegoValueBox.getStyle().set("border", "1px solid #ccc").set("padding", "16px").set("border-radius", "8px").set("font-size", "1.5em");
+        tempChart.addSeries("Temp1", toDateList(tempTimestamps), new LinkedList<>(temp1Values)).setMarker(SeriesMarkers.CIRCLE);
+        tempChart.addSeries("Temp2", toDateList(tempTimestamps), new LinkedList<>(temp2Values)).setMarker(SeriesMarkers.DIAMOND);
 
-        // Layouts
-        HorizontalLayout temp1Layout = new HorizontalLayout(temp1Chart, temp1ValueBox);
-        temp1Layout.setAlignItems(HorizontalLayout.Alignment.CENTER);
-        temp1Layout.setWidthFull();
-        temp1Layout.setSpacing(true);
+        humoChart.addSeries("Humo1", toDateList(humoTimestamps), new LinkedList<>(humo1Values)).setMarker(SeriesMarkers.CIRCLE);
+        humoChart.addSeries("Humo2", toDateList(humoTimestamps), new LinkedList<>(humo2Values)).setMarker(SeriesMarkers.DIAMOND);
 
-        HorizontalLayout temp2Layout = new HorizontalLayout(temp2Chart, temp2ValueBox);
-        temp2Layout.setAlignItems(HorizontalLayout.Alignment.CENTER);
-        temp2Layout.setWidthFull();
-        temp2Layout.setSpacing(true);
+        tempChartImage = new Image();
+        tempChartImage.setWidth("800px");
+        tempChartImage.setHeight("400px");
 
-        HorizontalLayout humo1Layout = new HorizontalLayout(humo1Chart, humo1ValueBox);
-        humo1Layout.setAlignItems(HorizontalLayout.Alignment.CENTER);
-        humo1Layout.setWidthFull();
-        humo1Layout.setSpacing(true);
+        humoChartImage = new Image();
+        humoChartImage.setWidth("800px");
+        humoChartImage.setHeight("400px");
 
-        HorizontalLayout humo2Layout = new HorizontalLayout(humo2Chart, humo2ValueBox);
-        humo2Layout.setAlignItems(HorizontalLayout.Alignment.CENTER);
-        humo2Layout.setWidthFull();
-        humo2Layout.setSpacing(true);
+        spanTemperatura = new Span();
+        spanHumo = new Span();
+        spanIncendio = new Span();
 
-        HorizontalLayout fuegoLayout = new HorizontalLayout(fuegoValueBox);
-        fuegoLayout.setAlignItems(HorizontalLayout.Alignment.CENTER);
-        fuegoLayout.setWidthFull();
-        fuegoLayout.setSpacing(true);
+        updateInfoSpans();
+        updateTempChartImage();
+        updateHumoChartImage();
 
-        getContent().add(temp1Layout, temp2Layout, humo1Layout, humo2Layout, fuegoLayout);
-    }
+        VerticalLayout infoPanel = new VerticalLayout(spanTemperatura, spanHumo, spanIncendio);
+        infoPanel.setWidth("50%");
+        infoPanel.getStyle().set("border", "1px solid #ccc").set("padding", "10px").set("margin", "auto");
 
-    // Append methods for real-time plotting (with exception handling)
-    private void appendTemp1(int x, double y) {
-        temp1X.add(x);
-        temp1Y.add(y);
-        try {
-            temp1Chart.update();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-    private void appendTemp2(int x, double y) {
-        temp2X.add(x);
-        temp2Y.add(y);
-        try {
-            temp2Chart.update();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-    private void appendHumo1(int x, int y) {
-        humo1X.add(x);
-        humo1Y.add(y);
-        try {
-            humo1Chart.update();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-    private void appendHumo2(int x, int y) {
-        humo2X.add(x);
-        humo2Y.add(y);
-        try {
-            humo2Chart.update();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        getContent().add(tempChartImage, humoChartImage, infoPanel);
     }
 
     @Override
     protected void onAttach(AttachEvent attachEvent) {
         super.onAttach(attachEvent);
         UI ui = attachEvent.getUI();
-        ui.setPollInterval(1000);
+        ui.setPollInterval(3000);
 
-        temp1Subscription = service.getTemp1Stream().subscribe(temp -> {
-            ui.access(() -> {
-                x1++;
-                appendTemp1(x1, temp);
-                temp1ValueBox.setText("Current Temp1: " + temp);
-            });
-        });
+        subscriptionTemp1 = service.getTemp1Stream().subscribe(value -> ui.access(() -> {
+            temp1 = value;
+            addTempDataPoint();
+        }));
 
-        temp2Subscription = service.getTemp2Stream().subscribe(temp -> {
-            ui.access(() -> {
-                x2++;
-                appendTemp2(x2, temp);
-                temp2ValueBox.setText("Current Temp2: " + temp);
-            });
-        });
+        subscriptionTemp2 = service.getTemp2Stream().subscribe(value -> ui.access(() -> {
+            temp2 = value;
+            addTempDataPoint();
+        }));
 
-        humo1Subscription = service.getHumo1Stream().subscribe(humo -> {
-            ui.access(() -> {
-                x3++;
-                appendHumo1(x3, humo);
-                humo1ValueBox.setText("Current Humo1: " + humo);
-            });
-        });
+        subscriptionHumo1 = service.getHumo1Stream().subscribe(value -> ui.access(() -> {
+            humo1 = value;
+            addHumoDataPoint();
+        }));
 
-        humo2Subscription = service.getHumo2Stream().subscribe(humo -> {
-            ui.access(() -> {
-                x4++;
-                appendHumo2(x4, humo);
-                humo2ValueBox.setText("Current Humo2: " + humo);
-            });
-        });
+        subscriptionHumo2 = service.getHumo2Stream().subscribe(value -> ui.access(() -> {
+            humo2 = value;
+            addHumoDataPoint();
+        }));
 
-        fuegoSubscription = service.getFuegoStream().subscribe(fuego -> {
-            ui.access(() -> {
-                fuegoValueBox.setText("Fuego: " + (fuego ? "Activo" : "No activo"));
-            });
-        });
+        subscriptionFuego = service.getFuegoStream().subscribe(value -> ui.access(() -> {
+            fuego = value;
+            updateInfoSpans();
+        }));
+    }
+
+    private void addTempDataPoint() {
+        LocalDateTime now = LocalDateTime.now();
+        tempTimestamps.add(now);
+        temp1Values.add(temp1);
+        temp2Values.add(temp2);
+
+        while (tempTimestamps.size() > MAX_POINTS) tempTimestamps.removeFirst();
+        while (temp1Values.size() > MAX_POINTS) temp1Values.removeFirst();
+        while (temp2Values.size() > MAX_POINTS) temp2Values.removeFirst();
+
+        tempChart.updateXYSeries("Temp1", toDateList(tempTimestamps), new LinkedList<>(temp1Values), null);
+        tempChart.updateXYSeries("Temp2", toDateList(tempTimestamps), new LinkedList<>(temp2Values), null);
+        updateTempChartImage();
+        updateInfoSpans();
+    }
+
+    private void addHumoDataPoint() {
+        LocalDateTime now = LocalDateTime.now();
+        humoTimestamps.add(now);
+        humo1Values.add(humo1);
+        humo2Values.add(humo2);
+
+        while (humoTimestamps.size() > MAX_POINTS) humoTimestamps.removeFirst();
+        while (humo1Values.size() > MAX_POINTS) humo1Values.removeFirst();
+        while (humo2Values.size() > MAX_POINTS) humo2Values.removeFirst();
+
+        humoChart.updateXYSeries("Humo1", toDateList(humoTimestamps), new LinkedList<>(humo1Values), null);
+        humoChart.updateXYSeries("Humo2", toDateList(humoTimestamps), new LinkedList<>(humo2Values), null);
+        updateHumoChartImage();
+        updateInfoSpans();
+    }
+
+    private void updateTempChartImage() {
+        try {
+            byte[] imageBytes = BitmapEncoder.getBitmapBytes(tempChart, BitmapEncoder.BitmapFormat.PNG);
+            tempChartImage.setSrc(new StreamResource("tempChart.png", () -> new ByteArrayInputStream(imageBytes)));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void updateHumoChartImage() {
+        try {
+            byte[] imageBytes = BitmapEncoder.getBitmapBytes(humoChart, BitmapEncoder.BitmapFormat.PNG);
+            humoChartImage.setSrc(new StreamResource("humoChart.png", () -> new ByteArrayInputStream(imageBytes)));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void updateInfoSpans() {
+        spanTemperatura.setText(String.format("🌡 Temp1: %.2f°C | Temp2: %.2f°C", temp1, temp2));
+        spanHumo.setText(String.format("💨 Humo1: %d | Humo2: %d", humo1, humo2));
+        spanIncendio.setText(fuego ? "🔥 INCENDIO DETECTADO" : "🟢 Sin riesgo");
+    }
+
+    private LinkedList<Date> toDateList(LinkedList<LocalDateTime> localDateTimes) {
+        LinkedList<Date> dates = new LinkedList<>();
+        for (LocalDateTime ldt : localDateTimes) {
+            dates.add(Date.from(ldt.atZone(ZoneId.systemDefault()).toInstant()));
+        }
+        return dates;
     }
 
     @Override
     protected void onDetach(DetachEvent detachEvent) {
-        if (temp1Subscription != null) temp1Subscription.dispose();
-        if (temp2Subscription != null) temp2Subscription.dispose();
-        if (humo1Subscription != null) humo1Subscription.dispose();
-        if (humo2Subscription != null) humo2Subscription.dispose();
-        if (fuegoSubscription != null) fuegoSubscription.dispose();
+        if (subscriptionTemp1 != null) subscriptionTemp1.dispose();
+        if (subscriptionTemp2 != null) subscriptionTemp2.dispose();
+        if (subscriptionHumo1 != null) subscriptionHumo1.dispose();
+        if (subscriptionHumo2 != null) subscriptionHumo2.dispose();
+        if (subscriptionFuego != null) subscriptionFuego.dispose();
         super.onDetach(detachEvent);
     }
 }

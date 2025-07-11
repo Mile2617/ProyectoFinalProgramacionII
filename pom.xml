@@ -53,9 +53,9 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.storedobject.chart</groupId>
-            <artifactId>sochart</artifactId>
-            <version>3.2.0</version>
+            <groupId>org.knowm.xchart</groupId>
+            <artifactId>xchart</artifactId>
+            <version>3.8.2</version>
         </dependency>
 
         <!-- SPRING BOOT -->
