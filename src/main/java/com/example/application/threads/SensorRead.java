@@ -19,6 +19,8 @@ public class SensorRead extends Thread {
     private final AtomicReference<Integer> humo1 = new AtomicReference<>(0);
     private final AtomicReference<Integer> humo2 = new AtomicReference<>(0);
     private final AtomicReference<Boolean> fuego = new AtomicReference<>(false);
+    private final AtomicReference<Integer> flama1 = new AtomicReference<>(0);
+    private final AtomicReference<Integer> flama2 = new AtomicReference<>(0);
 
     @Override
     public void run() {
@@ -35,7 +37,6 @@ public class SensorRead extends Thread {
                         .subscribe(event -> {
                             try {
                                 String json = event.getData().getBodyAsString();
-                                // Replace all 'nan' (case-insensitive) with 'null'
                                 json = json.replaceAll("(?i)nan", "null");
                                 System.out.println("📥 Received telemetry: " + json);
 
@@ -67,6 +68,16 @@ public class SensorRead extends Thread {
                                     fuego.set(f);
                                     System.out.println("🔥 Fuego: " + f);
                                 }
+                                if (body.has("Flama1") && !body.get("Flama1").isNull()) {
+                                    int f1 = body.get("Flama1").asInt();
+                                    flama1.set(f1);
+                                    System.out.println("⚡ Flama1: " + f1);
+                                }
+                                if (body.has("Flama2") && !body.get("Flama2").isNull()) {
+                                    int f2 = body.get("Flama2").asInt();
+                                    flama2.set(f2);
+                                    System.out.println("⚡ Flama2: " + f2);
+                                }
                             } catch (Exception e) {
                                 System.err.println("❌ JSON parse error: " + e.getMessage());
                             }
@@ -86,4 +97,6 @@ public class SensorRead extends Thread {
     public int getHumo1() { return humo1.get(); }
     public int getHumo2() { return humo2.get(); }
     public boolean isFuego() { return fuego.get(); }
+    public int getFlama1() { return flama1.get(); }
+    public int getFlama2() { return flama2.get(); }
 }

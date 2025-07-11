@@ -25,6 +25,11 @@ public class DataService {
                 .delayElements(Duration.ofMillis(1000));
     }
 
+    public boolean isRiesgo() {
+        return sensor.getFlama1() > 0 || sensor.getFlama2() > 0 ||
+                sensor.getHumo1() > 1000 || sensor.getHumo2() > 1000;
+    }
+
     public Flux<Integer> getHumo1Stream() {
         return Flux.<Integer>generate(sink -> sink.next(sensor.getHumo1()))
                 .delayElements(Duration.ofMillis(1000));

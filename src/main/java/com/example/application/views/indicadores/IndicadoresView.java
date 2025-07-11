@@ -1,12 +1,16 @@
 package com.example.application.views.indicadores;
 
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.example.application.services.DataService;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.Composite;
 import com.vaadin.flow.component.DetachEvent;
 import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
@@ -35,14 +39,13 @@ public class IndicadoresView extends Composite<VerticalLayout> {
     private Disposable subscriptionHumo2;
     private Disposable subscriptionFuego;
 
-    // Temperature chart data
+    // Chart data
     private final XYChart tempChart;
     private final Image tempChartImage;
     private final LinkedList<LocalDateTime> tempTimestamps = new LinkedList<>();
     private final LinkedList<Double> temp1Values = new LinkedList<>();
     private final LinkedList<Double> temp2Values = new LinkedList<>();
 
-    // Smoke chart data
     private final XYChart humoChart;
     private final Image humoChartImage;
     private final LinkedList<LocalDateTime> humoTimestamps = new LinkedList<>();
@@ -51,8 +54,9 @@ public class IndicadoresView extends Composite<VerticalLayout> {
 
     private final int MAX_POINTS = 20;
 
-    private final Span spanTemperatura;
-    private final Span spanHumo;
+    // Value spans
+    private final Span spanTempActual;
+    private final Span spanHumoActual;
     private final Span spanIncendio;
 
     private double temp1 = 0.0;
@@ -61,13 +65,22 @@ public class IndicadoresView extends Composite<VerticalLayout> {
     private int humo2 = 0;
     private boolean fuego = false;
 
+    // Button state
+    private boolean aspersoresEncendidos = false;
+    private boolean alarmaEncendida = false;
+
+    private Button btnEncenderAspersores;
+    private Button btnApagarAspersores;
+    private Button btnEncenderAlarma;
+    private Button btnApagarAlarma;
+
     public IndicadoresView(DataService service) {
         this.service = service;
 
-        // Temperature chart setup
+        // Chart setup
         tempChart = new XYChartBuilder()
-                .width(800)
-                .height(400)
+                .width(400)
+                .height(300)
                 .title("Temperaturas")
                 .xAxisTitle("Hora")
                 .yAxisTitle("Temperatura (C)")
@@ -76,10 +89,9 @@ public class IndicadoresView extends Composite<VerticalLayout> {
         tempChart.getStyler().setDatePattern("HH:mm:ss");
         tempChart.getStyler().setXAxisLabelRotation(45);
 
-        // Smoke chart setup
         humoChart = new XYChartBuilder()
-                .width(800)
-                .height(400)
+                .width(400)
+                .height(300)
                 .title("Humo")
                 .xAxisTitle("Hora")
                 .yAxisTitle("Nivel de Humo")
@@ -88,7 +100,7 @@ public class IndicadoresView extends Composite<VerticalLayout> {
         humoChart.getStyler().setDatePattern("HH:mm:ss");
         humoChart.getStyler().setXAxisLabelRotation(45);
 
-        // Initialize with dummy data
+        // Dummy data
         LocalDateTime now = LocalDateTime.now();
         tempTimestamps.add(now);
         temp1Values.add(0.0);
@@ -105,26 +117,57 @@ public class IndicadoresView extends Composite<VerticalLayout> {
         humoChart.addSeries("Humo2", toDateList(humoTimestamps), new LinkedList<>(humo2Values)).setMarker(SeriesMarkers.DIAMOND);
 
         tempChartImage = new Image();
-        tempChartImage.setWidth("800px");
-        tempChartImage.setHeight("400px");
+        tempChartImage.setWidth("400px");
+        tempChartImage.setHeight("300px");
 
         humoChartImage = new Image();
-        humoChartImage.setWidth("800px");
-        humoChartImage.setHeight("400px");
+        humoChartImage.setWidth("400px");
+        humoChartImage.setHeight("300px");
 
-        spanTemperatura = new Span();
-        spanHumo = new Span();
+        spanTempActual = new Span();
+        spanHumoActual = new Span();
         spanIncendio = new Span();
 
         updateInfoSpans();
         updateTempChartImage();
         updateHumoChartImage();
 
-        VerticalLayout infoPanel = new VerticalLayout(spanTemperatura, spanHumo, spanIncendio);
-        infoPanel.setWidth("50%");
-        infoPanel.getStyle().set("border", "1px solid #ccc").set("padding", "10px").set("margin", "auto");
+        // Layouts
+        VerticalLayout tempPanel = new VerticalLayout(tempChartImage, spanTempActual);
+        tempPanel.setAlignItems(FlexComponent.Alignment.CENTER);
+        tempPanel.setPadding(false);
 
-        getContent().add(tempChartImage, humoChartImage, infoPanel);
+        VerticalLayout humoPanel = new VerticalLayout(humoChartImage, spanHumoActual);
+        humoPanel.setAlignItems(FlexComponent.Alignment.CENTER);
+        humoPanel.setPadding(false);
+
+        HorizontalLayout chartsLayout = new HorizontalLayout(tempPanel, humoPanel);
+        chartsLayout.setWidthFull();
+        chartsLayout.setJustifyContentMode(HorizontalLayout.JustifyContentMode.CENTER);
+
+        // Sprinkler buttons
+        btnEncenderAspersores = new Button("Encender aspersores", e -> encenderAspersores());
+        btnApagarAspersores = new Button("Apagar aspersores", e -> apagarAspersores());
+        btnApagarAspersores.setEnabled(false);
+
+        HorizontalLayout buttonsAspersores = new HorizontalLayout(btnEncenderAspersores, btnApagarAspersores);
+        buttonsAspersores.setJustifyContentMode(HorizontalLayout.JustifyContentMode.CENTER);
+        buttonsAspersores.setWidthFull();
+
+        // Alarm buttons
+        btnEncenderAlarma = new Button("Encender alarma", e -> encenderAlarma());
+        btnApagarAlarma = new Button("Apagar alarma", e -> apagarAlarma());
+        btnApagarAlarma.setEnabled(false);
+
+        HorizontalLayout buttonsAlarma = new HorizontalLayout(btnEncenderAlarma, btnApagarAlarma);
+        buttonsAlarma.setJustifyContentMode(HorizontalLayout.JustifyContentMode.CENTER);
+        buttonsAlarma.setWidthFull();
+
+        // Main layout
+        VerticalLayout mainLayout = getContent();
+        mainLayout.setWidthFull();
+        mainLayout.setAlignItems(FlexComponent.Alignment.CENTER);
+        mainLayout.add(chartsLayout, spanIncendio, buttonsAspersores, buttonsAlarma);
     }
 
     @Override
@@ -210,9 +253,9 @@ public class IndicadoresView extends Composite<VerticalLayout> {
     }
 
     private void updateInfoSpans() {
-        spanTemperatura.setText(String.format("🌡 Temp1: %.2f°C | Temp2: %.2f°C", temp1, temp2));
-        spanHumo.setText(String.format("💨 Humo1: %d | Humo2: %d", humo1, humo2));
-        spanIncendio.setText(fuego ? "🔥 INCENDIO DETECTADO" : "🟢 Sin riesgo");
+        spanTempActual.setText(String.format("🌡 Temp1: %.2f°C | Temp2: %.2f°C", temp1, temp2));
+        spanHumoActual.setText(String.format("💨 Humo1: %d | Humo2: %d", humo1, humo2));
+        spanIncendio.setText(service.isRiesgo() ? "Riesgo" : "Sin riesgo");
     }
 
     private LinkedList<Date> toDateList(LinkedList<LocalDateTime> localDateTimes) {
@@ -221,6 +264,67 @@ public class IndicadoresView extends Composite<VerticalLayout> {
             dates.add(Date.from(ldt.atZone(ZoneId.systemDefault()).toInstant()));
         }
         return dates;
+    }
+
+    // Sprinkler logic
+    private void encenderAspersores() {
+        sendReleCommand(1);
+        aspersoresEncendidos = true;
+        btnEncenderAspersores.setEnabled(false);
+        btnApagarAspersores.setEnabled(true);
+        Notification.show("Aspersores encendidos");
+    }
+
+    private void apagarAspersores() {
+        sendReleCommand(0);
+        aspersoresEncendidos = false;
+        btnEncenderAspersores.setEnabled(true);
+        btnApagarAspersores.setEnabled(false);
+        Notification.show("Aspersores apagados");
+    }
+
+    // Alarm logic
+    private void encenderAlarma() {
+        sendBuzzerCommand(1);
+        alarmaEncendida = true;
+        btnEncenderAlarma.setEnabled(false);
+        btnApagarAlarma.setEnabled(true);
+        Notification.show("Alarma encendida");
+    }
+
+    private void apagarAlarma() {
+        sendBuzzerCommand(0);
+        alarmaEncendida = false;
+        btnEncenderAlarma.setEnabled(true);
+        btnApagarAlarma.setEnabled(false);
+        Notification.show("Alarma apagada");
+    }
+
+    // HTTP calls
+    private void sendReleCommand(int value) {
+        try {
+            java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
+            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                    .uri(java.net.URI.create("/api/dashboard/rele?value=" + value))
+                    .POST(java.net.http.HttpRequest.BodyPublishers.noBody())
+                    .build();
+            client.sendAsync(request, java.net.http.HttpResponse.BodyHandlers.discarding());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void sendBuzzerCommand(int value) {
+        try {
+            java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
+            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                    .uri(java.net.URI.create("/api/dashboard/buzzer?value=" + value))
+                    .POST(java.net.http.HttpRequest.BodyPublishers.noBody())
+                    .build();
+            client.sendAsync(request, java.net.http.HttpResponse.BodyHandlers.discarding());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
